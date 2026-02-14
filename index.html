@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星河伺服器 - 全方位監控系統</title>
+    <style>
+        :root { --main-green: #72bd44; --dark-bg: #0d0d0d; }
+        body { background-color: var(--dark-bg); color: white; font-family: sans-serif; margin: 0; padding: 0; }
+        .header { background-color: var(--main-green); color: black; padding: 15px 30px; font-weight: bold; font-size: 1.1rem; }
+        .container { padding: 30px; max-width: 1100px; margin: 0 auto; }
+        .monitor-card { border: 1px solid #333; background: #1a1a1a; border-radius: 8px; padding: 20px; margin-bottom: 25px; }
+        .card-title { color: var(--main-green); border-left: 4px solid var(--main-green); padding-left: 10px; margin-bottom: 15px; font-size: 1.1rem; font-weight: bold; }
+        .info-grid { display: flex; gap: 40px; background: #111; padding: 15px; border-radius: 5px; border: 1px solid #222; }
+        .info-item span { color: var(--main-green); font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { text-align: left; border-bottom: 2px solid #333; padding: 10px; color: #888; font-size: 0.9rem; }
+        td { padding: 12px 10px; border-bottom: 1px solid #222; font-size: 0.95rem; }
+        .log-box { background: #000; padding: 15px; height: 180px; overflow-y: auto; font-family: monospace; color: #777; font-size: 0.85rem; border: 1px solid #222; line-height: 1.6; }
+        .highlight { color: var(--main-green); }
+    </style>
+</head>
+<body>
+    <div class="header">星河伺服器 - 全方位監控中心</div>
+    
+    <div class="container">
+        <div class="monitor-card">
+            <div class="card-title">伺服器即時狀態匯報</div>
+            <div class="info-grid">
+                <div class="info-item">位置: <span>ryfn.falix.gg</span></div>
+                <div class="info-item">狀態: <span id="srv-status">連接中...</span></div>
+                <div class="info-item">人數: <span id="srv-players">- / -</span></div>
+            </div>
+        </div>
+
+        <div class="monitor-card">
+            <div class="card-title">玩家詳細數據 (血量 / 座標 / 裝備)</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>玩家帳號</th>
+                        <th>目前血量</th>
+                        <th>座標 (X, Y, Z)</th>
+                        <th>穿戴裝備</th>
+                    </tr>
+                </thead>
+                <tbody id="player-table">
+                    <tr><td colspan="4" style="text-align: center; color: #555; padding: 30px;">等待數據轉發器連線並檢索 NBT 資訊...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="monitor-card">
+            <div class="card-title">伺服器存取與活動紀錄</div>
+            <div class="log-box" id="log-display">
+                [系統] 正在建立數據監聽點...<br>
+                [系統] 伺服器地址定位: ryfn.falix.gg
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function updateBasicInfo() {
+            try {
+                const res = await fetch('https://api.mcsrvstat.us/2/ryfn.falix.gg');
+                const data = await res.json();
+                if(data.online) {
+                    document.getElementById('srv-status').innerText = "在線";
+                    document.getElementById('srv-status').style.color = "#72bd44";
+                    document.getElementById('srv-players').innerText = data.players.online + " / " + data.players.max;
+                } else {
+                    document.getElementById('srv-status').innerText = "離線";
+                    document.getElementById('srv-status').style.color = "#ff4444";
+                }
+            } catch (e) {
+                console.error("監控資料抓取失敗");
+            }
+        }
+        updateBasicInfo();
+        setInterval(updateBasicInfo, 30000);
+    </script>
+</body>
+</html>
