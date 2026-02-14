@@ -1,26 +1,34 @@
-name: 星河伺服器全方位監控報表
+name: 2B2T 歷史數據監視器
 on:
   schedule:
-    - cron: '*/5 * * * *' # 每 5 分鐘自動掃描一次
-  workflow_dispatch: # 允許你手動點擊執行
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
 
 jobs:
-  scan:
+  log-2b2t:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - name: 擷取 ryfn.falix.gg 資料
+      - uses: actions/checkout@v4
+      - name: 擷取 2b2t 即時數據
         run: |
-          curl -s https://api.mcsrvstat.us/2/ryfn.falix.gg > status.json
-          echo "掃描時間: $(date)" >> report.txt
-          echo "伺服器狀態: $(jq -r '.online' status.json)" >> report.txt
-          echo "在線人數: $(jq -r '.players.online' status.json) / $(jq -r '.players.max' status.json)" >> report.txt
-          echo "玩家名單: $(jq -r '.players.list // "無資料"' status.json)" >> report.txt
-          echo "-----------------------------------" >> report.txt
+          mkdir -p data
+          # 2b2t 的 API 資料
+          curl -s https://api.mcsrvstat.us/2/2b2t.org > 2b2t.json
+          
+          TIMESTAMP=$(date -u -d "+8 hours" "+%Y-%m-%d %H:%M")
+          ONLINE=$(jq -r '.players.online' 2b2t.json)
+          MOTD=$(jq -r '.motd.clean[0]' 2b2t.json | sed 's/|/-/g')
+          
+          # 寫入歷史紀錄 (時間 | 在線人數 | 伺服器標語)
+          echo "$TIMESTAMP | 在線: $ONLINE | 標語: $MOTD" >> data/2b2t_history.log
+          tail -n 1000 data/2b2t_history.log > tmp && mv tmp data/2b2t_history.log
 
-      - name: 儲存詳細報表
-        uses: actions/upload-artifact@v4
-        with:
-          name: server-full-report
-          path: |
-            status.json
-            report.txt
+      - name: 存檔至 GitHub
+        run: |
+          git config --global user.name "2B2T Monitor"
+          git config --global user.email "bot@github.com"
+          git add data/2b2t_history.log
+          git commit -m "Archive 2b2t data: $(date)" || exit 0
+          git push
