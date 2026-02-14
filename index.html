@@ -2,105 +2,77 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>星河伺服器 - 核心數據監控中心</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>2B2T - 核心數據監控中心</title>
     <style>
-        :root { --green: #72bd44; --bg: #0d0d0d; --card: #161616; }
-        body { background: var(--bg); color: white; font-family: monospace; margin: 0; padding: 20px; }
-        .grid { display: grid; grid-template-columns: 1fr 350px; gap: 20px; }
-        .card { border: 1px solid #333; background: var(--card); padding: 20px; border-radius: 4px; margin-bottom: 20px; }
-        .title { color: var(--green); font-weight: bold; border-bottom: 1px solid var(--green); padding-bottom: 8px; margin-bottom: 15px; }
-        .player-unit { display: flex; align-items: center; background: #000; padding: 10px; margin-bottom: 10px; border-left: 3px solid var(--green); }
-        .player-unit img { width: 40px; height: 40px; margin-right: 15px; }
-        .log { background: #000; height: 350px; overflow-y: auto; padding: 10px; font-size: 0.8rem; color: #888; border: 1px solid #222; }
-        .stat-val { color: var(--green); font-size: 1.1rem; }
-        canvas { max-height: 200px; }
+        :root { --green: #72bd44; --bg: #0d0d0d; }
+        body { background: var(--bg); color: white; font-family: 'Courier New', monospace; padding: 20px; }
+        .card { border: 1px solid #333; background: #111; padding: 20px; margin-bottom: 20px; border-left: 5px solid var(--green); }
+        .title { color: var(--green); font-weight: bold; margin-bottom: 15px; font-size: 1.2rem; }
+        .history-box { background: #000; height: 450px; overflow-y: auto; padding: 15px; border: 1px solid #222; font-size: 0.9rem; }
+        .history-item { border-bottom: 1px solid #1a1a1a; padding: 8px 0; color: #888; }
+        .highlight { color: var(--green); }
+        .warning { color: #ff4444; }
     </style>
 </head>
 <body>
-    <h2 style="color: var(--green);">REAL-TIME SYSTEM MONITORING: ryfn.falix.gg</h2>
-    
-    <div class="grid">
-        <div class="main-col">
-            <div class="card">
-                <div class="title">Server Metrics</div>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
-                    <div>狀態: <span id="status" class="stat-val">WAITING</span></div>
-                    <div>在線: <span id="players" class="stat-val">0 / 0</span></div>
-                    <div>延遲: <span id="ping" class="stat-val">45ms</span></div>
-                </div>
-                <canvas id="playerChart"></canvas>
-            </div>
+    <h2 style="color: var(--green);">MONITORING TARGET: 2b2t.org</h2>
 
-            <div class="card">
-                <div class="title">Active Entity Tracking</div>
-                <div id="player-container">掃描中...</div>
-            </div>
-        </div>
-
-        <div class="side-col">
-            <div class="card">
-                <div class="title">Activity Log</div>
-                <div class="log" id="log-box">初始化監控系統...</div>
-            </div>
-            <div class="card">
-                <div class="title">Session Statistics</div>
-                <div id="stats-box" style="font-size: 0.8rem; color: #72bd44;">
-                    最長在線: N/A<br>
-                    平均延遲: 42ms
-                </div>
-            </div>
+    <div class="card">
+        <div class="title">REAL-TIME STATUS (2B2T.ORG)</div>
+        <div style="display: flex; gap: 50px;">
+            <div>狀態: <span id="status" class="highlight">掃描中...</span></div>
+            <div>目前總在線: <span id="online" class="highlight">-</span></div>
+            <div>版本: <span id="version" class="highlight">-</span></div>
         </div>
     </div>
 
+    <div class="card">
+        <div class="title">2B2T 歷史活動日誌 (5分鐘/次)</div>
+        <div class="history-box" id="history-content">正在從雲端載入 2b2t 歷史封包...</div>
+    </div>
+
     <script>
-        let lastList = [];
-        let historyData = [];
-        let labels = [];
-        const ctx = document.getElementById('playerChart').getContext('2d');
-        const playerChart = new Chart(ctx, {
-            type: 'line',
-            data: { labels: labels, datasets: [{ label: '在線人數', data: historyData, borderColor: '#72bd44', tension: 0.4 }] },
-            options: { scales: { y: { beginAtZero: true, grid: { color: '#222' } }, x: { grid: { display: false } } } }
-        });
-
-        async function update() {
+        // 即時監控 2b2t
+        async function fetch2b2t() {
             try {
-                const res = await fetch('https://api.mcsrvstat.us/2/ryfn.falix.gg');
+                const res = await fetch('https://api.mcsrvstat.us/2/2b2t.org');
                 const data = await res.json();
-                const now = new Date().toLocaleTimeString();
-
                 if (data.online) {
                     document.getElementById('status').innerText = "ONLINE";
-                    document.getElementById('players').innerText = `${data.players.online} / ${data.players.max}`;
-                    
-                    // 更新圖表
-                    if (labels.length > 10) { labels.shift(); historyData.shift(); }
-                    labels.push(now);
-                    historyData.push(data.players.online);
-                    playerChart.update();
-
-                    // 玩家清單與頭像
-                    const container = document.getElementById('player-container');
-                    const currentList = data.players.list || [];
-                    container.innerHTML = currentList.map(name => `
-                        <div class="player-unit">
-                            <img src="https://minotar.net/avatar/${name}/40" alt="skin">
-                            <div><span style="color:var(--green)">${name}</span><br>
-                            <small style="color:#666">追蹤中 - 狀態: 穩定</small></div>
-                        </div>
-                    `).join('');
-
-                    // 紀錄邏輯
-                    const logBox = document.getElementById('log-box');
-                    currentList.forEach(p => { if(!lastList.includes(p)) logBox.innerHTML = `<div style="color:var(--green)">[${now}] ENTITY_JOIN: ${p}</div>` + logBox.innerHTML; });
-                    lastList.forEach(p => { if(!currentList.includes(p)) logBox.innerHTML = `<div style="color:#ff4444">[${now}] ENTITY_LEAVE: ${p}</div>` + logBox.innerHTML; });
-                    lastList = currentList;
+                    document.getElementById('online').innerText = data.players.online;
+                    document.getElementById('version').innerText = data.version;
+                } else {
+                    document.getElementById('status').innerText = "OFFLINE";
+                    document.getElementById('status').className = "warning";
                 }
-            } catch (e) {}
+            } catch (e) { console.error("API Error"); }
         }
-        setInterval(update, 15000);
-        update();
+
+        // 加載歷史存檔
+        async function loadHistory() {
+            const container = document.getElementById('history-content');
+            try {
+                const res = await fetch('data/2b2t_history.log');
+                if (!res.ok) throw new Error();
+                const text = await res.text();
+                const lines = text.trim().split('\n').reverse();
+                
+                container.innerHTML = lines.map(line => {
+                    const parts = line.split('|');
+                    return `<div class="history-item">
+                        <span style="color:#555">[${parts[0].trim()}]</span> 
+                        <span class="highlight">${parts[1]}</span> | 
+                        <span>${parts[2]}</span>
+                    </div>`;
+                }).join('');
+            } catch (e) {
+                container.innerHTML = "等待 GitHub Actions 完成第一次數據存檔 (約需5分鐘)...";
+            }
+        }
+
+        fetch2b2t();
+        loadHistory();
+        setInterval(fetch2b2t, 30000); // 30秒更新即時狀態
     </script>
 </body>
 </html>
