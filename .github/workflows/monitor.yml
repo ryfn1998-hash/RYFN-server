@@ -1,0 +1,26 @@
+name: 星河伺服器全方位監控報表
+on:
+  schedule:
+    - cron: '*/5 * * * *' # 每 5 分鐘自動掃描一次
+  workflow_dispatch: # 允許你手動點擊執行
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 擷取 ryfn.falix.gg 資料
+        run: |
+          curl -s https://api.mcsrvstat.us/2/ryfn.falix.gg > status.json
+          echo "掃描時間: $(date)" >> report.txt
+          echo "伺服器狀態: $(jq -r '.online' status.json)" >> report.txt
+          echo "在線人數: $(jq -r '.players.online' status.json) / $(jq -r '.players.max' status.json)" >> report.txt
+          echo "玩家名單: $(jq -r '.players.list // "無資料"' status.json)" >> report.txt
+          echo "-----------------------------------" >> report.txt
+
+      - name: 儲存詳細報表
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-full-report
+          path: |
+            status.json
+            report.txt
